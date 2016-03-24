@@ -1,0 +1,23 @@
+{% extends "lockdown/base.html" %}
+
+{% block title %}Coming soon...{% endblock %}
+
+{% block content %}
+<div class="row">
+	<div class="col-md-offset-3 col-md-6">
+		<div class="animated fadeInUp center-block" id="lockdown" style="margin:100px 0px">
+		  <h2>Coming soon...?</h2>
+
+		  <p>This is not yet available to the public.</p>
+
+		  {% if form %}
+		  <form action="" method="post">{% csrf_token %}
+		    {{ form.as_p }}
+		    <p><input type="submit" value="Preview" /></p>
+		  </form>
+		  {% endif %}
+
+		</div>
+	</div>	
+</div>	
+{% endblock %}

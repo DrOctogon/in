@@ -1,0 +1,256 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Developing with Docker &mdash; inspirit 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="inspirit 0.1 documentation" href="index.html" />
+    <link rel="prev" title="Deploy" href="deploy.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="deploy.html" title="Deploy"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">inspirit 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="developing-with-docker">
+<h1>Developing with Docker<a class="headerlink" href="#developing-with-docker" title="Permalink to this headline">¶</a></h1>
+<p>You can develop your application in a <a class="reference external" href="https://www.docker.com/">Docker</a> container for simpler deployment onto bare Linux machines later. This instruction assumes an <a class="reference external" href="http://aws.amazon.com/">Amazon Web Services</a> EC2 instance, but it should work on any machine with Docker &gt; 1.3 and <a class="reference external" href="https://docs.docker.com/compose/">Docker compose</a> installed.</p>
+<div class="section" id="setting-up">
+<h2>Setting up<a class="headerlink" href="#setting-up" title="Permalink to this headline">¶</a></h2>
+<p>Docker encourages running one container for each process. This might mean one container for your web server, one for Django application and a third for your database. Once you&#8217;re happy composing containers in this way you can easily add more, such as a <a class="reference external" href="http://redis.io/">Redis</a> cache.</p>
+<p>The Docker compose tool (previously known as <a class="reference external" href="http://www.fig.sh/">fig</a>) makes linking these containers easy. An example set up for your cookiecutter-django project might look like this:</p>
+<div class="highlight-python"><div class="highlight"><pre>webapp/ # Your cookiecutter project would be in here
+    Dockerfile
+    ...
+database/
+    Dockerfile
+    ...
+webserver/
+    Dockerfile
+    ...
+docker-compose.yml
+</pre></div>
+</div>
+<p>Each component of your application would get its own <a class="reference external" href="https://docs.docker.com/reference/builder/">Dockerfile</a>. The rest of this example assumes you are using the <a class="reference external" href="https://registry.hub.docker.com/_/postgres/">base postgres image</a> for your database. Your database settings in <cite>config/common.py</cite> might then look something like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">DATABASES</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">&#39;default&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;ENGINE&#39;</span><span class="p">:</span> <span class="s">&#39;django.db.backends.postgresql_psycopg2&#39;</span><span class="p">,</span>
+            <span class="s">&#39;NAME&#39;</span><span class="p">:</span> <span class="s">&#39;postgres&#39;</span><span class="p">,</span>
+            <span class="s">&#39;USER&#39;</span><span class="p">:</span> <span class="s">&#39;postgres&#39;</span><span class="p">,</span>
+            <span class="s">&#39;HOST&#39;</span><span class="p">:</span> <span class="s">&#39;database&#39;</span><span class="p">,</span>
+            <span class="s">&#39;PORT&#39;</span><span class="p">:</span> <span class="mi">5432</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+<p>The <a class="reference external" href="https://docs.docker.com/compose/#compose-documentation">Docker compose documentation</a> explains in detail what you can accomplish in the <cite>docker-compose.yml</cite> file, but an example configuration might look like this:</p>
+<div class="highlight-yaml"><div class="highlight"><pre><span class="l-Scalar-Plain">database</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">database</span>
+<span class="l-Scalar-Plain">webapp</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">webapp</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">command</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/usr/bin/python3.4 manage.py runserver 0.0.0.0:8000</span> <span class="c1"># dev setting</span>
+    <span class="c1"># command: gunicorn -b 0.0.0.0:8000 wsgi:application # production setting</span>
+    <span class="l-Scalar-Plain">volumes</span><span class="p-Indicator">:</span>
+        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">webapp/your_project_name:/path/to/container/workdir/</span>
+    <span class="l-Scalar-Plain">links</span><span class="p-Indicator">:</span>
+        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">database</span>
+<span class="l-Scalar-Plain">webserver</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">webserver</span>
+    <span class="l-Scalar-Plain">ports</span><span class="p-Indicator">:</span>
+        <span class="p-Indicator">-</span> <span class="s">&quot;80:80&quot;</span>
+        <span class="p-Indicator">-</span> <span class="s">&quot;443:443&quot;</span>
+    <span class="l-Scalar-Plain">links</span><span class="p-Indicator">:</span>
+        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">webapp</span>
+</pre></div>
+</div>
+<p>We&#8217;ll ignore the webserver for now (you&#8217;ll want to comment that part out while we do). A working Dockerfile to run your cookiecutter application might look like this:</p>
+<div class="highlight-python"><div class="highlight"><pre>FROM ubuntu:14.04
+ENV REFRESHED_AT 2015-01-13
+
+# update packages and prepare to build software
+RUN [&quot;apt-get&quot;, &quot;update&quot;]
+RUN [&quot;apt-get&quot;, &quot;-y&quot;, &quot;install&quot;, &quot;build-essential&quot;, &quot;vim&quot;, &quot;git&quot;, &quot;curl&quot;]
+RUN [&quot;locale-gen&quot;, &quot;en_GB.UTF-8&quot;]
+
+# install latest python
+RUN [&quot;apt-get&quot;, &quot;-y&quot;, &quot;build-dep&quot;, &quot;python3-dev&quot;, &quot;python3-imaging&quot;]
+RUN [&quot;apt-get&quot;, &quot;-y&quot;, &quot;install&quot;, &quot;python3-dev&quot;, &quot;python3-imaging&quot;, &quot;python3-pip&quot;]
+
+# prepare postgreSQL support
+RUN [&quot;apt-get&quot;, &quot;-y&quot;, &quot;build-dep&quot;, &quot;python3-psycopg2&quot;]
+
+# move into our working directory
+# ADD must be after chown see http://stackoverflow.com/a/26145444/1281947
+RUN [&quot;groupadd&quot;, &quot;python&quot;]
+RUN [&quot;useradd&quot;, &quot;python&quot;, &quot;-s&quot;, &quot;/bin/bash&quot;, &quot;-m&quot;, &quot;-g&quot;, &quot;python&quot;, &quot;-G&quot;, &quot;python&quot;]
+ENV HOME /home/python
+WORKDIR /home/python
+RUN [&quot;chown&quot;, &quot;-R&quot;, &quot;python:python&quot;, &quot;/home/python&quot;]
+ADD ./ /home/python
+
+# manage requirements
+ENV REQUIREMENTS_REFRESHED_AT 2015-02-25
+RUN [&quot;pip3&quot;, &quot;install&quot;, &quot;-r&quot;, &quot;requirements.txt&quot;]
+
+# uncomment the line below to use container as a non-root user
+USER python:python
+</pre></div>
+</div>
+<p>Running <cite>sudo docker-compose build</cite> will follow the instructions in your <cite>docker-compose.yml</cite> file and build the database container, then your webapp, before mounting your cookiecutter project files as a volume in the webapp container and linking to the database. Our example yaml file runs in development mode but changing it to production mode is as simple as commenting out the line using <cite>runserver</cite> and uncommenting the line using <cite>gunicorn</cite>.</p>
+<p>Both are set to run on port <cite>0.0.0.0:8000</cite>, which is where the Docker daemon will discover it. You can now run <cite>sudo docker-compose up</cite> and browse to <cite>localhost:8000</cite> to see your application running.</p>
+</div>
+<div class="section" id="deployment">
+<h2>Deployment<a class="headerlink" href="#deployment" title="Permalink to this headline">¶</a></h2>
+<p>You&#8217;ll need a webserver container for deployment. An example setup for <a class="reference external" href="http://wiki.nginx.org/Main">Nginx</a> might look like this:</p>
+<div class="highlight-python"><div class="highlight"><pre>FROM ubuntu:14.04
+ENV REFRESHED_AT 2015-02-11
+
+# get the nginx package and set it up
+RUN [&quot;apt-get&quot;, &quot;update&quot;]
+RUN [&quot;apt-get&quot;, &quot;-y&quot;, &quot;install&quot;, &quot;nginx&quot;]
+
+# forward request and error logs to docker log collector
+RUN ln -sf /dev/stdout /var/log/nginx/access.log
+RUN ln -sf /dev/stderr /var/log/nginx/error.log
+VOLUME [&quot;/var/cache/nginx&quot;]
+EXPOSE 80 443
+
+# load nginx conf
+ADD ./site.conf /etc/nginx/sites-available/your_cookiecutter_project
+RUN [&quot;ln&quot;, &quot;-s&quot;, &quot;/etc/nginx/sites-available/your_cookiecutter_project&quot;, &quot;/etc/nginx/sites-enabled/your_cookiecutter_project&quot;]
+RUN [&quot;rm&quot;, &quot;-rf&quot;, &quot;/etc/nginx/sites-available/default&quot;]
+
+#start the server
+CMD [&quot;nginx&quot;, &quot;-g&quot;, &quot;daemon off;&quot;]
+</pre></div>
+</div>
+<p>That Dockerfile assumes you have an Nginx conf file named <cite>site.conf</cite> in the same directory as the webserver Dockerfile. A very basic example, which forwards traffic onto the development server or gunicorn for processing, would look like this:</p>
+<div class="highlight-python"><div class="highlight"><pre># see http://serverfault.com/questions/577370/how-can-i-use-environment-variables-in-nginx-conf#comment730384_577370
+upstream localhost {
+    server webapp_1:8000;
+}
+server {
+    location / {
+        proxy_pass http://localhost;
+    }
+}
+</pre></div>
+</div>
+<p>Running <cite>sudo docker-compose build webserver</cite> will build your server container. Running <cite>sudo docker-compose up</cite> will now expose your application directly on <cite>localhost</cite> (no need to specify the port number).</p>
+</div>
+<div class="section" id="building-and-running-your-app-on-ec2">
+<h2>Building and running your app on EC2<a class="headerlink" href="#building-and-running-your-app-on-ec2" title="Permalink to this headline">¶</a></h2>
+<p>All you now need to do to run your app in production is:</p>
+<ul class="simple">
+<li>Create an empty EC2 Linux instance (any Linux machine should do).</li>
+<li>Install your preferred source control solution, Docker and Docker compose on the news instance.</li>
+<li>Pull in your code from source control. The root directory should be the one with your <cite>docker-compose.yml</cite> file in it.</li>
+<li>Run <cite>sudo docker-compose build</cite> and <cite>sudo docker-compose up</cite>.</li>
+<li>Assign an <a class="reference external" href="https://aws.amazon.com/articles/1346">Elastic IP address</a> to your new machine.</li>
+</ul>
+<ul class="simple">
+<li>Point your domain name to the elastic IP.</li>
+</ul>
+<p><strong>Be careful with Elastic IPs</strong> because, on the AWS free tier, if you assign one and then stop the machine you will incur charges while the machine is down (presumably because you&#8217;re preventing them allocating the IP to someone else).</p>
+</div>
+<div class="section" id="security-advisory">
+<h2>Security advisory<a class="headerlink" href="#security-advisory" title="Permalink to this headline">¶</a></h2>
+<p>The setup described in this instruction will get you up-and-running but it hasn&#8217;t been audited for security. If you are running your own setup like this it is always advisable to, at a minimum, examine your application with a tool like <a class="reference external" href="https://www.owasp.org/index.php/OWASP_Zed_Attack_Proxy_Project">OWASP ZAP</a> to see what security holes you might be leaving open.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Developing with Docker</a><ul>
+<li><a class="reference internal" href="#setting-up">Setting up</a></li>
+<li><a class="reference internal" href="#deployment">Deployment</a></li>
+<li><a class="reference internal" href="#building-and-running-your-app-on-ec2">Building and running your app on EC2</a></li>
+<li><a class="reference internal" href="#security-advisory">Security advisory</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="deploy.html"
+                        title="previous chapter">Deploy</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/docker_ec2.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="deploy.html" title="Deploy"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">inspirit 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, inspirit.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>
